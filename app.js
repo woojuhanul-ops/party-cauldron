@@ -6,6 +6,9 @@
  *  - 영어 이름 입력 → 한국어 정본 이름으로 바꿔 저장 (매칭·보관일수 정상 동작)
  *  - 레시피 조리 방법(steps) 표시, 큰 배율 단위 환산 표기
  *  - 수량 0 입력은 조용히 바꾸지 않고 안내 후 등록하지 않는다
+ *  - 빈 재료 이름 제출도 조용히 넘기지 않고 안내 후 등록하지 않는다 (N1)
+ *  - 같은 재료·단위·입고일 중복 등록은 새 행 대신 기존 행에 합산한다 (N2)
+ *  - 보조 글씨 최소 13px + 글씨 크기(보통/크게) 토글 (N3)
  *  - 샘플 안내는 샘플 재료가 남아 있을 때만 표시
  *  - 장보기: 체크해도 사라지지 않고(취소선+되돌리기), 항목별 삭제, 담김 상태 버튼 표시
  */
@@ -29,6 +32,7 @@ const STR = {
     storageLabel: s => s, unknownShelf: '표준일수 없음 · 기본 7일 적용',
     emptyInv: '아직 재료가 없습니다. 위에서 재료를 넣어 보세요.',
     qtyError: '수량은 0보다 큰 숫자를 넣어 주세요. 입력한 그대로만 저장됩니다.',
+    nameError: '재료 이름을 넣어 주세요. 이름이 없으면 저장되지 않습니다.',
     recipeTitle: '오늘 뭐 해 먹지?', canMake: '지금 만들 수 있어요', almost: '조금 모자라요 · 이것만 사면 가능해요',
     allRecipes: '전체 레시피 보기',
     emptyCan: '지금 바로 만들 수 있는 요리가 없습니다. 재료를 더 넣어 보세요.',
@@ -40,6 +44,7 @@ const STR = {
     addToShop: '부족 재료 장보기 담기', inShop: '장보기 목록에 있음',
     shopTitle: '장보기 목록', clearBtn: '목록 비우기', emptyShop: '장보기 목록이 비어 있습니다. 레시피에서 부족 재료를 담아 보세요.',
     soundOn: '소리 켜짐', soundOff: '소리 꺼짐',
+    fontNormal: '글씨 보통', fontLarge: '글씨 크게',
     footerData: '보관일수·레시피는 일반 자료 기반의 참고값입니다. 모든 기록은 이 기기의 브라우저에만 저장되며 서버로 전송되지 않습니다.'
   },
   en: {
@@ -59,6 +64,7 @@ const STR = {
     unknownShelf: 'No standard value · default 7 days',
     emptyInv: 'No ingredients yet. Add some above.',
     qtyError: 'Please enter a quantity greater than 0. Nothing was saved.',
+    nameError: 'Please enter an ingredient name. Nothing was saved.',
     recipeTitle: 'What should we cook?', canMake: 'You can make these now', almost: 'Just a little short · buy these to make it',
     allRecipes: 'Browse all recipes',
     emptyCan: 'Nothing is fully cookable yet. Add more ingredients.',
@@ -70,6 +76,7 @@ const STR = {
     addToShop: 'Add missing to shopping list', inShop: 'In shopping list',
     shopTitle: 'Shopping List', clearBtn: 'Clear list', emptyShop: 'Your shopping list is empty. Add missing ingredients from a recipe.',
     soundOn: 'Sound on', soundOff: 'Sound off',
+    fontNormal: 'Text normal', fontLarge: 'Text large',
     footerData: 'Shelf-life and recipe data are general reference values. Everything is stored only in this browser — nothing is sent to a server.'
   }
 };
@@ -150,6 +157,7 @@ function save(key, value) {
 let lang = load('pc_lang', 'ko');
 let party = load('pc_party', 2);
 let soundOn = load('pc_sound', 'on') !== 'off'; // 효과음 설정 (기기 저장, 기본 켜짐)
+let fontLarge = load('pc_font', 'normal') === 'large'; // 글씨 크기 설정 (기기 저장, 기본 보통)
 
 /* ---------- 효과음·진동 (외부 파일 없이 WebAudio로 그 자리에서 생성) ----------
  * 소리는 사용자의 탭·입력에 반응해서만 재생한다 (자동 재생 없음).
@@ -452,7 +460,16 @@ function renderSoundToggle() {
   $('soundLabel').textContent = soundOn ? t.soundOn : t.soundOff;
 }
 
-function renderAll() { applyI18n(); renderSoundToggle(); renderInventory(); renderRecipes(); renderShopping(); uiAct = false; }
+function renderFontToggle() {
+  const t = STR[lang];
+  const btn = $('fontToggle');
+  if (!btn) return;
+  btn.setAttribute('aria-pressed', String(fontLarge));
+  $('fontLabel').textContent = fontLarge ? t.fontLarge : t.fontNormal;
+  document.body.classList.toggle('font-large', fontLarge);
+}
+
+function renderAll() { applyI18n(); renderSoundToggle(); renderFontToggle(); renderInventory(); renderRecipes(); renderShopping(); uiAct = false; }
 
 /* ---------- 이벤트 ---------- */
 document.addEventListener('DOMContentLoaded', () => {
@@ -462,7 +479,12 @@ document.addEventListener('DOMContentLoaded', () => {
   $('addForm').addEventListener('submit', e => {
     e.preventDefault();
     const name = canonicalName($('ingName').value);
-    if (!name) return;
+    if (!name) {
+      // 이름이 비면 조용히 넘기지 않는다 — 수량 오류와 같은 방식으로 안내하고 등록하지 않는다
+      $('formError').textContent = STR[lang].nameError;
+      $('formError').hidden = false;
+      return;
+    }
     const qtyRaw = $('ingQty').value;
     const qty = Number(qtyRaw);
     if (qtyRaw === '' || isNaN(qty) || qty <= 0) {
@@ -478,10 +500,18 @@ document.addEventListener('DOMContentLoaded', () => {
       unit: $('ingUnit').value,
       added: $('ingDate').value || toDateStr(new Date())
     };
-    inventory.push(item);
+    // 같은 재료·단위·입고일이면 새 행을 만들지 않고 기존 행에 수량을 합친다.
+    // 입고일이 다르면 유통기한이 달라지므로 합치지 않는다 — 합산 총량과 만료 판정은 기존과 동일하게 유지된다.
+    const dup = inventory.find(i => i.name === item.name && i.unit === item.unit && i.added === item.added);
+    if (dup) {
+      dup.qty = (Number(dup.qty) || 0) + qty;
+      flashRef = { name: dup.name, added: dup.added, qty: dup.qty, unit: dup.unit };
+    } else {
+      inventory.push(item);
+      flashRef = { name: item.name, added: item.added, qty: item.qty, unit: item.unit };
+    }
     save('pc_inventory', inventory);
     $('ingName').value = '';
-    flashRef = { name: item.name, added: item.added, qty: item.qty, unit: item.unit };
     sfx('pop'); buzz(15);
     uiAct = true;
     renderAll();
@@ -507,6 +537,13 @@ document.addEventListener('DOMContentLoaded', () => {
     save('pc_sound', soundOn ? 'on' : 'off');
     renderSoundToggle();
     if (soundOn) sfx('pop'); // 켜는 순간에만 확인음
+  });
+
+  $('fontToggle').addEventListener('click', () => {
+    fontLarge = !fontLarge;
+    save('pc_font', fontLarge ? 'large' : 'normal');
+    renderFontToggle();
+    sfx('tick');
   });
 
   $('clearShopping').addEventListener('click', () => {

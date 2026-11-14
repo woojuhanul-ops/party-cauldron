@@ -44,6 +44,12 @@ body {
 }
 #soundToggle:hover { border-color: var(--accent); color: var(--accent-dark); }
 #soundToggle[aria-pressed="false"] { color: var(--muted); }
+#fontToggle {
+  border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  border-radius: 999px; padding: 8px 14px; font-size: 14px; cursor: pointer; min-height: 44px;
+}
+#fontToggle:hover { border-color: var(--accent); color: var(--accent-dark); }
+#fontToggle[aria-pressed="false"] { color: var(--muted); }
 
 main { max-width: 960px; margin: 0 auto; padding: 0 16px 24px; display: grid; gap: 16px; }
 
@@ -101,7 +107,7 @@ button.ghost.small { padding: 6px 10px; font-size: 13px; }
 .badge { border-radius: 999px; padding: 3px 10px; font-size: 13px; font-weight: 600; color: #fff; background: var(--ok); }
 .badge-warn { background: var(--warn); }
 .badge-expired { background: var(--expired); }
-.tag { border-radius: 6px; padding: 1px 6px; font-size: 12px; font-weight: 600; }
+.tag { border-radius: 6px; padding: 1px 6px; font-size: 13px; font-weight: 600; }
 .tag-warn { background: #fdf0da; color: #9a6206; }
 
 /* 레시피 */
@@ -171,3 +177,12 @@ button.primary:active { background: var(--accent-dark); }
   button:active { transform: none; }
   .inv-item.flash, .card h3.celebrate { animation: none; }
 }
+
+/* 2026-11-14 N3 — 글씨 크게 모드: 보조·본문 글씨를 한 단계 더 키운다 (기기 설정으로 저장) */
+body.font-large .brand p { font-size: 16px; }
+body.font-large .hint, body.font-large .empty, body.font-large .field label,
+body.font-large .inv-sub, body.font-large .recipe-meta, body.font-large footer,
+body.font-large .steps summary, body.font-large .steps ol { font-size: 15px; }
+body.font-large .tag { font-size: 14px; }
+body.font-large .inv-qty { font-size: 15px; }
+body.font-large .ing-list { font-size: 16px; }
