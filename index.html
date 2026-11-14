@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Party Cauldron — 통합 주방 시스템</title>
+<meta name="description" content="입고·유통기한 엔진, 레시피 대조, 장보기 목록, 파티 인원 배율을 하나로 잇는 오프라인 주방 시스템">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="cauldron" aria-hidden="true">🍲</span>
+    <div>
+      <h1>Party Cauldron</h1>
+      <p data-i18n="tagline">통합 주방 시스템 — 유통기한부터 파티까지</p>
+    </div>
+  </div>
+  <button id="langToggle" type="button" aria-label="Language">EN</button>
+</header>
+
+<main>
+  <!-- 파티 콜드런 -->
+  <section class="card cauldron-card" aria-labelledby="cauldronTitle">
+    <h2 id="cauldronTitle">🎉 <span data-i18n="cauldronTitle">파티 콜드런</span></h2>
+    <p data-i18n="cauldronDesc">먹을 인원을 정하면 모든 레시피의 재료량이 그 인원에 맞게 바뀝니다.</p>
+    <div class="slider-row">
+      <label for="partySlider"><span data-i18n="partySize">인원</span>: <strong id="partyValue">2</strong><span data-i18n="peopleUnit">명</span></label>
+      <input type="range" id="partySlider" min="1" max="20" step="1" value="2">
+    </div>
+    <p class="hint" id="partyNote"></p>
+  </section>
+
+  <!-- 입고·유통기한 엔진 -->
+  <section class="card" aria-labelledby="invTitle">
+    <h2 id="invTitle">🧊 <span data-i18n="invTitle">냉장고 재고 · 유통기한</span></h2>
+    <form id="addForm" class="add-form">
+      <div class="field grow">
+        <label for="ingName" data-i18n="ingName">재료 이름</label>
+        <input id="ingName" list="ingList" required autocomplete="off" placeholder="예: 두부">
+        <datalist id="ingList"></datalist>
+      </div>
+      <div class="field small">
+        <label for="ingQty" data-i18n="ingQty">수량</label>
+        <input id="ingQty" type="number" min="0" step="any" value="1">
+      </div>
+      <div class="field small">
+        <label for="ingUnit" data-i18n="ingUnit">단위</label>
+        <select id="ingUnit">
+          <option>개</option><option>g</option><option>kg</option><option>팩</option><option>모</option>
+          <option>대</option><option>장</option><option>마리</option><option>봉지</option><option>컵</option>
+          <option>큰술</option><option>작은술</option><option>쪽</option><option>조각</option><option>공기</option>
+          <option>ml</option><option>L</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="ingDate" data-i18n="ingDate">입고일</label>
+        <input id="ingDate" type="date" required>
+      </div>
+      <button type="submit" class="primary" data-i18n="addBtn">재료 넣기</button>
+    </form>
+    <p class="hint form-error" id="formError" hidden></p>
+    <p class="hint" id="seedNote" hidden data-i18n="seedNote">처음 방문이라 샘플 재료가 들어 있습니다. 자유롭게 지우고 쓰세요.</p>
+    <p class="hint" data-i18n="expiryHint">유통기한은 재료별 표준 보관일수로 자동 계산한 참고값입니다.</p>
+    <div id="inventoryList" class="inv-list"></div>
+  </section>
+
+  <!-- 레시피 대조 -->
+  <section class="card" aria-labelledby="recipeTitle">
+    <h2 id="recipeTitle">👨‍🍳 <span data-i18n="recipeTitle">오늘 뭐 해 먹지?</span></h2>
+    <h3 data-i18n="canMake">지금 만들 수 있어요</h3>
+    <div id="canMakeList" class="recipe-grid"></div>
+    <h3 data-i18n="almost">조금 모자라요 · 이것만 사면 가능해요</h3>
+    <div id="almostList" class="recipe-grid"></div>
+    <details>
+      <summary data-i18n="allRecipes">전체 레시피 보기</summary>
+      <div id="allList" class="recipe-grid"></div>
+    </details>
+  </section>
+
+  <!-- 장보기 목록 -->
+  <section class="card" aria-labelledby="shopTitle">
+    <h2 id="shopTitle">🛒 <span data-i18n="shopTitle">장보기 목록</span></h2>
+    <div id="shoppingList" class="shop-list"></div>
+    <button id="clearShopping" type="button" class="ghost" data-i18n="clearBtn">목록 비우기</button>
+  </section>
+</main>
+
+<footer>
+  <p data-i18n="footerData">보관일수·레시피는 일반 자료 기반의 참고값입니다. 모든 기록은 이 기기의 브라우저에만 저장되며 서버로 전송되지 않습니다.</p>
+  <p>Party Cauldron · Nexus Group · Kiroween 2026</p>
+</footer>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

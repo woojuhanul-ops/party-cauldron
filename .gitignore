@@ -1,0 +1,7 @@
+.DS_Store
+*.log
+node_modules/
+
+# NOTE: .kiro/ is intentionally NOT ignored.
+# Kiroween 2026 requires the /.kiro directory (specs, steering, hooks)
+# to be present and detectable at the repository root.
