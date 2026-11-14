@@ -37,6 +37,13 @@ body {
   border-radius: 999px; padding: 8px 16px; font-size: 14px; cursor: pointer; min-height: 44px;
 }
 #langToggle:hover { border-color: var(--accent); color: var(--accent-dark); }
+.top-actions { display: flex; gap: 8px; align-items: center; }
+#soundToggle {
+  border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  border-radius: 999px; padding: 8px 14px; font-size: 14px; cursor: pointer; min-height: 44px;
+}
+#soundToggle:hover { border-color: var(--accent); color: var(--accent-dark); }
+#soundToggle[aria-pressed="false"] { color: var(--muted); }
 
 main { max-width: 960px; margin: 0 auto; padding: 0 16px 24px; display: grid; gap: 16px; }
 
@@ -138,3 +145,29 @@ button.primary.small:disabled { background: var(--muted); cursor: default; }
 .shop-item { justify-content: space-between; }
 .shop-check { display: flex; gap: 10px; align-items: center; cursor: pointer; flex: 1; }
 .shop-check .done { text-decoration: line-through; color: var(--muted); }
+
+/* 2026-11-14 맛 추가 — 눌림감·미시 피드백 (절제된 범위) */
+button { transition: transform 0.07s ease, background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease; }
+button:active { transform: scale(0.96); }
+button.primary:active { background: var(--accent-dark); }
+@keyframes rowFlash {
+  0% { background: #ffedd9; }
+  100% { background: transparent; }
+}
+.inv-item.flash { animation: rowFlash 1.4s ease-out 1; }
+.inv-item.expired.flash { animation-name: rowFlashExpired; }
+@keyframes rowFlashExpired {
+  0% { background: #ffedd9; }
+  100% { background: #fdf1ef; }
+}
+@keyframes celebratePulse {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+.card h3.celebrate { animation: celebratePulse 0.55s ease 1; transform-origin: left center; }
+@media (prefers-reduced-motion: reduce) {
+  button { transition: none; }
+  button:active { transform: none; }
+  .inv-item.flash, .card h3.celebrate { animation: none; }
+}

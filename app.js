@@ -39,6 +39,7 @@ const STR = {
     stepsTitle: '조리 방법',
     addToShop: '부족 재료 장보기 담기', inShop: '장보기 목록에 있음',
     shopTitle: '장보기 목록', clearBtn: '목록 비우기', emptyShop: '장보기 목록이 비어 있습니다. 레시피에서 부족 재료를 담아 보세요.',
+    soundOn: '소리 켜짐', soundOff: '소리 꺼짐',
     footerData: '보관일수·레시피는 일반 자료 기반의 참고값입니다. 모든 기록은 이 기기의 브라우저에만 저장되며 서버로 전송되지 않습니다.'
   },
   en: {
@@ -68,6 +69,7 @@ const STR = {
     stepsTitle: 'How to cook',
     addToShop: 'Add missing to shopping list', inShop: 'In shopping list',
     shopTitle: 'Shopping List', clearBtn: 'Clear list', emptyShop: 'Your shopping list is empty. Add missing ingredients from a recipe.',
+    soundOn: 'Sound on', soundOff: 'Sound off',
     footerData: 'Shelf-life and recipe data are general reference values. Everything is stored only in this browser — nothing is sent to a server.'
   }
 };
@@ -147,6 +149,54 @@ function save(key, value) {
 
 let lang = load('pc_lang', 'ko');
 let party = load('pc_party', 2);
+let soundOn = load('pc_sound', 'on') !== 'off'; // 효과음 설정 (기기 저장, 기본 켜짐)
+
+/* ---------- 효과음·진동 (외부 파일 없이 WebAudio로 그 자리에서 생성) ----------
+ * 소리는 사용자의 탭·입력에 반응해서만 재생한다 (자동 재생 없음).
+ * 오디오·진동을 쓸 수 없는 환경에서는 조용히 아무 일도 하지 않는다. */
+let actx = null;
+function audioCtx() {
+  if (!soundOn) return null;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!actx) actx = new AC();
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  } catch (e) { return null; }
+}
+function tone(freq, delay, dur, type, vol) {
+  const ctx = audioCtx(); if (!ctx) return;
+  try {
+    const t0 = ctx.currentTime + delay;
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t0); osc.stop(t0 + dur + 0.05);
+  } catch (e) { /* 소리 실패는 무시 */ }
+}
+function sfx(kind) {
+  if (!soundOn) return;
+  if (kind === 'pop') { tone(620, 0, 0.09, 'sine', 0.055); tone(880, 0.03, 0.08, 'sine', 0.04); }
+  else if (kind === 'chime') { tone(659, 0, 0.14, 'triangle', 0.05); tone(988, 0.09, 0.22, 'triangle', 0.05); }
+  else if (kind === 'tick') { tone(1150, 0, 0.03, 'triangle', 0.018); }
+  else if (kind === 'del') { tone(430, 0, 0.07, 'sine', 0.035); }
+}
+function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* 미지원 기기 무시 */ } }
+let lastTickAt = 0;
+function tickThrottled() {
+  const now = Date.now();
+  if (now - lastTickAt < 140) return;
+  lastTickAt = now; sfx('tick');
+}
+
+/* 사용자 동작으로 인한 렌더인지 표시 — 매칭 성공 축하(알림음)는 동작 직후에만 울린다 */
+let uiAct = false;
+let prevCanCount = null;
+let flashRef = null; // 방금 넣은 재고 행 표시용 {name, added, qty, unit}
 let shopping = load('pc_shopping', []).map(s => typeof s === 'string' ? { name: s, done: false } : s);
 let inventory = load('pc_inventory', null);
 
@@ -255,7 +305,9 @@ function renderInventory() {
   $('inventoryList').innerHTML = rows.map(({ item, idx, info }) => {
     const cls = info.left < 0 ? 'expired' : (info.left <= 3 ? 'warn' : 'ok');
     const badge = info.left < 0 ? t.expired(info.left) : (info.left === 0 ? t.expiresToday : t.daysLeft(info.left));
-    return `<div class="inv-item ${cls}">
+    const flash = flashRef && item.name === flashRef.name && item.added === flashRef.added
+      && Number(item.qty) === flashRef.qty && item.unit === flashRef.unit ? ' flash' : '';
+    return `<div class="inv-item ${cls}${flash}">
       <div class="inv-main">
         <strong>${esc(ingLabel(item.name))}</strong>
         <span class="inv-qty">${esc(displayQty(Number(item.qty) || 0, item.unit, item.name))}</span>
@@ -274,9 +326,12 @@ function renderInventory() {
     btn.addEventListener('click', () => {
       inventory.splice(Number(btn.dataset.remove), 1);
       save('pc_inventory', inventory);
+      sfx('del');
+      uiAct = true;
       renderAll();
     });
   });
+  flashRef = null;
 }
 
 function recipeCard(recipe, probMap) {
@@ -318,6 +373,13 @@ function renderRecipes() {
   });
   const can = analyzed.filter(a => a.problems === 0);
   const almost = analyzed.filter(a => a.problems >= 1 && a.problems <= 2);
+  // 사용자 동작으로 만들 수 있는 요리가 늘어난 순간에만 짧은 알림음+진동+반짝임
+  if (uiAct && prevCanCount !== null && can.length > prevCanCount) {
+    sfx('chime'); buzz(25);
+    const head = document.querySelector('[data-i18n="canMake"]');
+    if (head) { head.classList.remove('celebrate'); void head.offsetWidth; head.classList.add('celebrate'); }
+  }
+  prevCanCount = can.length;
   $('canMakeList').innerHTML = can.length ? can.map(a => recipeCard(a.r, a.probMap)).join('') : `<p class="empty">${t.emptyCan}</p>`;
   $('almostList').innerHTML = almost.length ? almost.map(a => recipeCard(a.r, a.probMap)).join('') : `<p class="empty">${t.emptyAlmost}</p>`;
   $('allList').innerHTML = analyzed.map(a => recipeCard(a.r, a.probMap)).join('');
@@ -327,6 +389,8 @@ function renderRecipes() {
       if (!target) return;
       Object.keys(target.probMap).forEach(name => { if (!shopping.some(s => s.name === name)) shopping.push({ name, done: false }); });
       save('pc_shopping', shopping);
+      sfx('pop'); buzz(15);
+      uiAct = true;
       renderAll();
       $('shoppingList').scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
@@ -343,6 +407,7 @@ function renderShopping() {
       const idx = Number(cb.dataset.shopIdx);
       if (shopping[idx]) shopping[idx].done = cb.checked;
       save('pc_shopping', shopping);
+      sfx('tick');
       renderShopping();
     });
   });
@@ -350,6 +415,7 @@ function renderShopping() {
     btn.addEventListener('click', () => {
       shopping.splice(Number(btn.dataset.shopDel), 1);
       save('pc_shopping', shopping);
+      sfx('del');
       renderShopping();
     });
   });
@@ -377,7 +443,16 @@ function applyI18n() {
   unitSel.value = UNITS.includes(cur) ? cur : '개';
 }
 
-function renderAll() { applyI18n(); renderInventory(); renderRecipes(); renderShopping(); }
+function renderSoundToggle() {
+  const t = STR[lang];
+  const btn = $('soundToggle');
+  if (!btn) return;
+  btn.setAttribute('aria-pressed', String(soundOn));
+  $('soundIcon').textContent = soundOn ? '🔊' : '🔇';
+  $('soundLabel').textContent = soundOn ? t.soundOn : t.soundOff;
+}
+
+function renderAll() { applyI18n(); renderSoundToggle(); renderInventory(); renderRecipes(); renderShopping(); uiAct = false; }
 
 /* ---------- 이벤트 ---------- */
 document.addEventListener('DOMContentLoaded', () => {
@@ -397,30 +472,45 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     $('formError').hidden = true;
-    inventory.push({
+    const item = {
       name,
       qty,
       unit: $('ingUnit').value,
       added: $('ingDate').value || toDateStr(new Date())
-    });
+    };
+    inventory.push(item);
     save('pc_inventory', inventory);
     $('ingName').value = '';
+    flashRef = { name: item.name, added: item.added, qty: item.qty, unit: item.unit };
+    sfx('pop'); buzz(15);
+    uiAct = true;
     renderAll();
   });
 
   $('partySlider').addEventListener('input', e => {
     party = Number(e.target.value);
     save('pc_party', party);
+    tickThrottled();
+    uiAct = true;
     renderAll();
   });
 
   $('langToggle').addEventListener('click', () => {
     lang = lang === 'ko' ? 'en' : 'ko';
     save('pc_lang', lang);
+    sfx('tick');
     renderAll();
   });
 
+  $('soundToggle').addEventListener('click', () => {
+    soundOn = !soundOn;
+    save('pc_sound', soundOn ? 'on' : 'off');
+    renderSoundToggle();
+    if (soundOn) sfx('pop'); // 켜는 순간에만 확인음
+  });
+
   $('clearShopping').addEventListener('click', () => {
+    if (shopping.length) sfx('del');
     shopping = [];
     save('pc_shopping', shopping);
     renderShopping();
