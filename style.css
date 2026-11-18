@@ -25,6 +25,7 @@ body {
 
 .topbar {
   display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 8px 12px;
   padding: 16px 20px; max-width: 960px; margin: 0 auto;
 }
 .brand { display: flex; gap: 12px; align-items: center; }
@@ -132,7 +133,9 @@ footer { max-width: 960px; margin: 0 auto; padding: 8px 20px 28px; color: var(--
 footer p { margin: 4px 0; }
 
 @media (max-width: 560px) {
+  .brand { flex: 1 1 170px; min-width: 170px; }
   .brand h1 { font-size: 20px; }
+  .top-actions { flex-wrap: wrap; }
   .card { padding: 16px; }
   .field.small { width: calc(50% - 5px); }
   .inv-side { margin-left: 0; }
