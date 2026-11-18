@@ -11,6 +11,9 @@
  *  - 보조 글씨 최소 13px + 글씨 크기(보통/크게) 토글 (N3)
  *  - 샘플 안내는 샘플 재료가 남아 있을 때만 표시
  *  - 장보기: 체크해도 사라지지 않고(취소선+되돌리기), 항목별 삭제, 담김 상태 버튼 표시
+ * 2026-11-18 순환심사 1회차 개정:
+ *  - 샘플 표시는 최초 샘플과 (이름·수량·단위)가 일치하는 항목에만 붙인다 — 사용자가 직접 넣은
+ *    재료에까지 붙어, 샘플을 다 지워도 샘플 안내가 사라지지 않던 문제 수정
  */
 
 const DEFAULT_SHELF_DAYS = 7; // 표준표에 없는 재료의 기본 보관일수
@@ -229,10 +232,17 @@ if (inventory === null) {
 } else {
   // 구버전 재고 마이그레이션: 영어 이름으로 저장된 항목을 정본 이름으로 고치고,
   // 샘플 안내(pc_seeded)가 켜져 있던 재고는 샘플 표시를 붙인다 (안내 문구 종료 조건용).
+  // 단, 샘플 표시는 최초 샘플과 (이름·수량·단위)가 정확히 일치하는 항목에만 붙인다 —
+  // 사용자가 직접 넣은 재료에까지 붙이면 샘플을 다 지워도 안내가 사라지지 않는다.
+  const SEED_SIGNATURES = [['김치', 300, 'g'], ['돼지고기', 300, 'g'], ['두부', 1, '모'], ['대파', 3, '대'],
+    ['계란', 10, '개'], ['감자', 4, '개'], ['참기름', 1, '개'], ['소금', 1, '봉지']];
   const wasSeeded = load('pc_seeded', false);
   inventory = inventory.map(i => {
     const fixed = Object.assign({}, i, { name: canonicalName(i.name) });
-    if (wasSeeded && fixed.seeded === undefined) fixed.seeded = true;
+    if (wasSeeded && fixed.seeded === undefined
+      && SEED_SIGNATURES.some(([n, q, u]) => fixed.name === n && Number(fixed.qty) === q && fixed.unit === u)) {
+      fixed.seeded = true;
+    }
     return fixed;
   });
   save('pc_inventory', inventory);
