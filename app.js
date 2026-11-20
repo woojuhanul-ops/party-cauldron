@@ -25,6 +25,13 @@ const STR = {
     cauldronTitle: '파티 콜드런', cauldronDesc: '먹을 인원을 정하면 모든 레시피의 재료량이 그 인원에 맞게 바뀝니다.',
     partySize: '인원', peopleUnit: '명',
     partyNote: n => `모든 레시피 재료량이 ${n}인분 기준으로 조절되어 표시됩니다.`,
+    brewTitle: '양조 계획', brewDesc: '파티까지 남은 일수를 넣으면, 유통기한이 임박한 재료부터 소진하는 순서로 여러 레시피의 양조 계획을 계산하고, 계획에 쓰이지 못해 버려질 재료를 수치로 제시합니다.',
+    brewDaysLabel: '파티까지', brewDaysUnit: '일', brewBtn: '계획 계산',
+    brewEmpty: '이 기간 안에 만들 수 있는 레시피가 없습니다.',
+    brewPlanHead: n => `양조 계획 ${n}단계 (인원 기준 반영)`,
+    brewWaste: c => `예상 폐기 ${c}건 — 파티 전에 유통기한이 지나 계획에 쓸 수 없는 재료`,
+    brewWasteNone: '예상 폐기 0건 — 파티 전에 만료되는 재료가 없습니다.',
+    brewUses: '사용 재료',
     invTitle: '냉장고 재고 · 유통기한',
     ingName: '재료 이름', ingQty: '수량', ingUnit: '단위', ingDate: '입고일', addBtn: '재료 넣기',
     ingPlaceholder: '예: 두부',
@@ -56,6 +63,13 @@ const STR = {
     cauldronTitle: 'Party Cauldron', cauldronDesc: 'Set the number of guests and every recipe rescales its ingredients.',
     partySize: 'Guests', peopleUnit: '',
     partyNote: n => `All recipe quantities are scaled for ${n} guest(s).`,
+    brewTitle: 'Brew Plan', brewDesc: 'Enter the days until the party and it computes a multi-recipe brew plan that consumes the most expiry-imminent ingredients first, and reports how many ingredients will go to waste unused.',
+    brewDaysLabel: 'Days until party', brewDaysUnit: 'd', brewBtn: 'Compute plan',
+    brewEmpty: 'No recipe can be brewed within this window.',
+    brewPlanHead: n => `Brew plan: ${n} step(s) (scaled to guests)`,
+    brewWaste: c => `Expected waste: ${c} item(s) — expire before the party and cannot be used in the plan`,
+    brewWasteNone: 'Expected waste: 0 items — nothing expires before the party.',
+    brewUses: 'Uses',
     invTitle: 'Fridge Inventory · Expiry',
     ingName: 'Ingredient', ingQty: 'Qty', ingUnit: 'Unit', ingDate: 'Date added', addBtn: 'Add ingredient',
     ingPlaceholder: 'e.g. Tofu',
@@ -159,6 +173,8 @@ function save(key, value) {
 
 let lang = load('pc_lang', 'ko');
 let party = load('pc_party', 2);
+let brewDays = (() => { const v = Number(load('pc_brew_days', 3)); return Number.isFinite(v) ? Math.min(30, Math.max(0, Math.floor(v))) : 3; })();
+let brewComputed = false;
 let soundOn = load('pc_sound', 'on') !== 'off'; // 효과음 설정 (기기 저장, 기본 켜짐)
 let fontLarge = load('pc_font', 'normal') === 'large'; // 글씨 크기 설정 (기기 저장, 기본 보통)
 
@@ -312,6 +328,77 @@ function ingredientStatus(g, factor) {
   return { status: 'short', need, have };
 }
 
+/* ---------- 양조 계획 최적화 (Brew Plan) ----------
+ * 신규 기제: 단일 레시피 매칭이 아니라, 시간축(파티까지 남은 일수) 위에서
+ * 여러 레시피의 실행 순서를 정하는 순차 계획이다.
+ * 규칙 (감사 오라클이 같은 규칙을 독립 구현해 대조한다):
+ *  1) 잔여일 left < D(파티까지 일수)인 재고 묶음(lot)은 파티 전에 만료되므로
+ *     계획에 절대 쓰지 않고 예상 폐기로 센다.
+ *  2) 만들 수 있는 레시피 중, 쓰는 재료의 최소 잔여일(가장 임박한 재료)이
+ *     가장 작은 레시피를 다음 단계로 고른다. 동률은 레시피 id 오름차순.
+ *  3) 소진은 묶음 단위 선입선출(잔여일 오름차순, 동률은 등록 순)이다.
+ *  4) 인원 배율은 기존 party 값을 그대로 적용하고, 최대 12단계까지만 세운다.
+ */
+function computeBrewPlan(inv, partyN, daysUntil) {
+  const D = Math.min(30, Math.max(0, Math.floor(Number(daysUntil) || 0)));
+  const lots = inv.map((item, idx) => ({
+    name: item.name, qty: Number(item.qty) || 0, unit: item.unit, idx,
+    left: expiryInfo(item).left
+  }));
+  const wasteLots = lots.filter(l => l.left < D);
+  const pool = lots.filter(l => l.left >= D).map(l => Object.assign({}, l, { remain: l.qty }));
+  function availIn(g, unit) {
+    let sum = 0;
+    pool.forEach(l => {
+      if (l.name !== g.n || l.remain <= 0) return;
+      const c = convertQty(l.remain, l.unit, unit, g.n);
+      if (c !== null) sum += c;
+    });
+    return sum;
+  }
+  function urgencyOf(recipe) {
+    let m = Infinity;
+    recipe.ingredients.forEach(g => {
+      pool.forEach(l => {
+        if (l.name !== g.n || l.remain <= 0) return;
+        const c = convertQty(l.remain, l.unit, g.u, g.n);
+        if (c !== null && c > 0 && l.left < m) m = l.left;
+      });
+    });
+    return m;
+  }
+  const steps = [];
+  for (let s = 0; s < 12; s++) {
+    const cands = [];
+    RECIPES.forEach(r => {
+      const factor = partyN / r.servings;
+      const ok = r.ingredients.every(g => availIn(g, g.u) >= g.q * factor - 1e-9);
+      if (ok) cands.push({ r, u: urgencyOf(r) });
+    });
+    if (!cands.length) break;
+    cands.sort((a, b) => (a.u - b.u) || (a.r.id < b.r.id ? -1 : a.r.id > b.r.id ? 1 : 0));
+    const chosen = cands[0].r;
+    const factor = partyN / chosen.servings;
+    chosen.ingredients.forEach(g => {
+      let need = g.q * factor;
+      const glots = pool.filter(l => l.name === g.n && l.remain > 0)
+        .sort((a, b) => (a.left - b.left) || (a.idx - b.idx));
+      glots.forEach(l => {
+        if (need <= 1e-9) return;
+        const c = convertQty(l.remain, l.unit, g.u, g.n);
+        if (c === null) return;
+        const take = Math.min(c, need);
+        const back = convertQty(take, g.u, l.unit, g.n);
+        l.remain = Math.max(0, l.remain - (back === null ? 0 : back));
+        need -= take;
+      });
+    });
+    steps.push(chosen.id);
+  }
+  return { steps, wasteCount: wasteLots.length, wasteNames: wasteLots.map(l => l.name), daysUntil: D };
+}
+if (typeof window !== 'undefined') window.BrewPlan = { compute: computeBrewPlan };
+
 /* ---------- 렌더링 ---------- */
 const $ = id => document.getElementById(id);
 
@@ -439,6 +526,25 @@ function renderShopping() {
   });
 }
 
+function renderBrew() {
+  const t = STR[lang];
+  const box = $('brewPlanResult');
+  if (!box) return;
+  $('brewDaysValue').textContent = brewDays;
+  const input = $('brewDays');
+  if (input && Number(input.value) !== brewDays) input.value = brewDays;
+  if (!brewComputed) { box.innerHTML = ''; return; }
+  const plan = computeBrewPlan(inventory, party, brewDays);
+  const nameOf = id => { const r = RECIPES.find(x => x.id === id); return r ? (lang === 'en' ? r.en : r.name) : id; };
+  const stepsHtml = plan.steps.length
+    ? `<p class="hint">${esc(t.brewPlanHead(plan.steps.length))}</p><ol id="brewSteps" class="brew-steps">${plan.steps.map(id => `<li data-brew-step data-recipe="${esc(id)}">${esc(nameOf(id))}</li>`).join('')}</ol>`
+    : `<p class="empty">${t.brewEmpty}</p><ol id="brewSteps" class="brew-steps" hidden></ol>`;
+  const wasteHtml = plan.wasteCount > 0
+    ? `<p class="hint">${esc(t.brewWaste(plan.wasteCount))}: <strong id="brewWasteCount">${plan.wasteCount}</strong> · ${plan.wasteNames.map(n => esc(ingLabel(n))).join(', ')}</p>`
+    : `<p class="hint">${esc(t.brewWasteNone)} <strong id="brewWasteCount">0</strong></p>`;
+  box.innerHTML = stepsHtml + wasteHtml;
+}
+
 function applyI18n() {
   const t = STR[lang];
   document.documentElement.lang = lang === 'en' ? 'en' : 'ko';
@@ -479,7 +585,7 @@ function renderFontToggle() {
   document.body.classList.toggle('font-large', fontLarge);
 }
 
-function renderAll() { applyI18n(); renderSoundToggle(); renderFontToggle(); renderInventory(); renderRecipes(); renderShopping(); uiAct = false; }
+function renderAll() { applyI18n(); renderSoundToggle(); renderFontToggle(); renderInventory(); renderRecipes(); renderShopping(); renderBrew(); uiAct = false; }
 
 /* ---------- 이벤트 ---------- */
 document.addEventListener('DOMContentLoaded', () => {
@@ -554,6 +660,26 @@ document.addEventListener('DOMContentLoaded', () => {
     save('pc_font', fontLarge ? 'large' : 'normal');
     renderFontToggle();
     sfx('tick');
+  });
+
+  const brewInput = $('brewDays');
+  if (brewInput) {
+    brewInput.value = brewDays;
+    brewInput.addEventListener('change', () => {
+      const v = Math.floor(Number(brewInput.value));
+      brewDays = Number.isFinite(v) ? Math.min(30, Math.max(0, v)) : 0;
+      save('pc_brew_days', brewDays);
+      renderBrew();
+    });
+  }
+  const brewBtn = $('brewPlanBtn');
+  if (brewBtn) brewBtn.addEventListener('click', () => {
+    const v = Math.floor(Number(brewInput ? brewInput.value : brewDays));
+    brewDays = Number.isFinite(v) ? Math.min(30, Math.max(0, v)) : 0;
+    save('pc_brew_days', brewDays);
+    brewComputed = true;
+    sfx('pop');
+    renderBrew();
   });
 
   $('clearShopping').addEventListener('click', () => {

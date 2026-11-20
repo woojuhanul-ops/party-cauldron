@@ -16,7 +16,10 @@
 3. **장보기 목록** — 레시피의 부족 재료를 클릭 한 번으로 모아 둡니다.
 4. **Party Cauldron** — 인원 슬라이더(1~20명)가 모든 레시피의 재료량을 실제로
    배율 계산해 다시 표시합니다. 파티를 열면 큰 냄비(cauldron)가 필요한 법이니까요.
-5. **한/영 전환 + 모바일 반응형** — 한국어가 기본입니다.
+5. **양조 계획 (Brew Plan)** — 파티까지 남은 일수를 넣으면, 유통기한이 임박한 재료부터
+   소진하는 순서로 여러 레시피의 양조 순서를 계산하고(선입선출 소진, 인원 배율 반영),
+   파티 전에 만료돼 계획에 쓸 수 없는 재료를 예상 폐기로 수치화해 제시합니다.
+6. **한/영 전환 + 모바일 반응형** — 한국어가 기본입니다.
 
 ## 실행 방법
 
@@ -58,7 +61,7 @@ To ensure strict compliance with project constraints and open-source standards f
    We created structured specs and steering guidelines within `/.kiro/` at the repository root. These configuration files codified the application's non-negotiable invariants: exact 57-ingredient pantry shelf-life standards, threshold-aware recipe matching algorithms across all 80 recipes, dynamic unit scaling formulas, and 100% English/Korean language parity.
 
 2. **Edge-Case Auditing & Verification**:
-   Edge-case auditing was performed by our own review panel (1,000 persona journeys, 592,640 assertions, 0 failures). Kiro was used to build the /.kiro specification and steering files that structured the app's development.
+   Edge-case auditing was performed by our own review panel (1,000 persona journeys, 596,722 assertions, 0 failures — including a dedicated Brew Plan oracle that re-derives every brew plan independently and checks that no expired ingredient is ever scheduled). Kiro was used to build the /.kiro specification and steering files that structured the app's development.
 
 3. **Structural Compliance**:
    The `/.kiro` specification and steering files built with Kiro sit at the repository root alongside the application files, keeping the open-source codebase organized and ready for public distribution under the MIT License.

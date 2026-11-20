@@ -35,6 +35,18 @@
     <p class="hint" id="partyNote"></p>
   </section>
 
+  <!-- 양조 계획 최적화 (Brew Plan) -->
+  <section class="card" aria-labelledby="brewTitle">
+    <h2 id="brewTitle">📅 <span data-i18n="brewTitle">양조 계획</span></h2>
+    <p data-i18n="brewDesc">파티까지 남은 일수를 넣으면, 유통기한이 임박한 재료부터 소진하는 순서로 여러 레시피의 양조 계획을 계산하고, 계획에 쓰이지 못해 버려질 재료를 수치로 제시합니다.</p>
+    <div class="slider-row">
+      <label for="brewDays"><span data-i18n="brewDaysLabel">파티까지</span>: <strong id="brewDaysValue">3</strong><span data-i18n="brewDaysUnit">일</span></label>
+      <input type="number" id="brewDays" min="0" max="30" step="1" value="3">
+      <button type="button" id="brewPlanBtn" class="primary" data-i18n="brewBtn">계획 계산</button>
+    </div>
+    <div id="brewPlanResult" aria-live="polite"></div>
+  </section>
+
   <!-- 입고·유통기한 엔진 -->
   <section class="card" aria-labelledby="invTitle">
     <h2 id="invTitle">🧊 <span data-i18n="invTitle">냉장고 재고 · 유통기한</span></h2>

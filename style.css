@@ -121,6 +121,11 @@ button.ghost.small { padding: 6px 10px; font-size: 13px; }
 details { margin-top: 14px; }
 summary { cursor: pointer; color: var(--accent-dark); font-size: 14px; padding: 6px 0; }
 
+/* 양조 계획 */
+.brew-steps { margin: 6px 0 10px; padding-left: 22px; font-size: 15px; }
+.brew-steps li { margin-bottom: 4px; }
+#brewDays { padding: 10px; border: 1px solid var(--line); border-radius: 10px; font-size: 15px; width: 92px; background: #fff; }
+
 /* 장보기 */
 .shop-list { display: grid; gap: 6px; margin-bottom: 12px; }
 .shop-item {
