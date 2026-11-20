@@ -11,7 +11,7 @@
 1. **입고·유통기한 엔진** — 재료 이름·수량·입고일을 넣으면 재료별 표준 보관일수
    (내장 표 57종)로 유통기한을 자동 계산합니다. 남은 일수 순 정렬, 3일 이내 임박과
    만료를 색으로 구분합니다. 기록은 브라우저 localStorage에만 저장됩니다.
-2. **레시피 대조** — 내장 레시피 47개를 보유 재료(수량·유통기한까지 반영)와 대조해 "지금 만들 수 있어요"와
+2. **레시피 대조** — 내장 레시피 80개를 보유 재료(수량·유통기한까지 반영)와 대조해 "지금 만들 수 있어요"와
    재료 1~2개만 부족한 "이것만 사면 가능해요"를 나눠 보여줍니다.
 3. **장보기 목록** — 레시피의 부족 재료를 클릭 한 번으로 모아 둡니다.
 4. **Party Cauldron** — 인원 슬라이더(1~20명)가 모든 레시피의 재료량을 실제로
@@ -35,7 +35,7 @@ python3 -m http.server 8000   # → http://localhost:8000
 ```
 index.html   화면 구조
 style.css    반응형 스타일
-data.js      표준 보관일수 표(57종) + 레시피(47개, 조리 순서 포함)
+data.js      표준 보관일수 표(57종) + 레시피(80개, 조리 순서 포함)
 app.js       유통기한 계산 · 레시피 대조 · 장보기 · 인원 배율 · 한/영 전환
 .kiro/       Kiro 스펙·스티어링·훅 문서 (아래 참조)
 ```
@@ -55,10 +55,10 @@ Party Cauldron was conceptually designed by Dukha Kim and primary application ru
 To ensure strict compliance with project constraints and open-source standards for Kiroween 2026, Kiro CLI and the root `/.kiro` configuration directory were integrated into our workflow:
 
 1. **Specification & Steering Artifact Codification**:
-   We created structured specs and steering guidelines within `/.kiro/` at the repository root. These configuration files codified the application's non-negotiable invariants: exact 57-ingredient pantry shelf-life standards, threshold-aware recipe matching algorithms across all 47 recipes, dynamic unit scaling formulas, and 100% English/Korean language parity.
+   We created structured specs and steering guidelines within `/.kiro/` at the repository root. These configuration files codified the application's non-negotiable invariants: exact 57-ingredient pantry shelf-life standards, threshold-aware recipe matching algorithms across all 80 recipes, dynamic unit scaling formulas, and 100% English/Korean language parity.
 
 2. **Edge-Case Auditing & Verification**:
-   Edge-case auditing was performed by our own review panel (1,000 persona journeys, 348,176 assertions, 0 failures). Kiro was used to build the /.kiro specification and steering files that structured the app's development.
+   Edge-case auditing was performed by our own review panel (1,000 persona journeys, 592,640 assertions, 0 failures). Kiro was used to build the /.kiro specification and steering files that structured the app's development.
 
 3. **Structural Compliance**:
    The `/.kiro` specification and steering files built with Kiro sit at the repository root alongside the application files, keeping the open-source codebase organized and ready for public distribution under the MIT License.
