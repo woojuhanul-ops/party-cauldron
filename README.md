@@ -6,6 +6,10 @@
 > An offline kitchen system that connects fridge inventory → expiry dates → recipe
 > matching → shopping list → party scaling. No server, no account, no external API.
 
+*English: An offline web app that connects what is in your fridge, when it must be
+eaten by, and what you can cook with it — in one flow. No server, no account, no
+external API. Four files, that is all.*
+
 ## 기능
 
 1. **입고·유통기한 엔진** — 재료 이름·수량·입고일을 넣으면 재료별 표준 보관일수
@@ -21,6 +25,27 @@
    파티 전에 만료돼 계획에 쓸 수 없는 재료를 예상 폐기로 수치화해 제시합니다.
 6. **한/영 전환 + 모바일 반응형** — 한국어가 기본입니다.
 
+### Features (English translation of the section above)
+
+1. **Intake & expiry engine** — Enter an ingredient's name, quantity, and intake
+   date; its expiry is calculated automatically from the built-in standard
+   shelf-life table (57 ingredients). The list is sorted by days remaining, and
+   items expiring within 3 days or already expired are color-coded. Records are
+   stored only in the browser's localStorage.
+2. **Recipe matching** — The 80 built-in recipes are matched against what you
+   have (quantities and expiry dates included), split into "You can make these
+   now" and "Just buy this" (missing only one or two ingredients).
+3. **Shopping list** — Collect a recipe's missing ingredients with one click.
+4. **Party Cauldron** — The servings slider (1–20 people) actually rescales
+   every recipe's quantities and redisplays them. A party calls for a big pot —
+   a cauldron.
+5. **Brew Plan** — Enter the days left until the party, and it sequences
+   multiple recipes to use up the most urgent ingredients first (first-in,
+   first-out consumption, serving scaling applied), and quantifies ingredients
+   that will expire before the party and cannot be used as expected waste.
+6. **Korean/English toggle + mobile responsive** — Korean is the default
+   language.
+
 ## 실행 방법
 
 아무 정적 서버에 올리거나, 그냥 파일을 열면 됩니다.
@@ -30,6 +55,18 @@
 open index.html        # 또는 브라우저로 드래그
 
 # 방법 2: 로컬 서버
+python3 -m http.server 8000   # → http://localhost:8000
+```
+
+### How to run (English translation of the section above)
+
+Serve it from any static server, or just open the file.
+
+```sh
+# Option 1: open the file directly
+open index.html        # or drag it into a browser
+
+# Option 2: local server
 python3 -m http.server 8000   # → http://localhost:8000
 ```
 
@@ -43,11 +80,28 @@ app.js       유통기한 계산 · 레시피 대조 · 장보기 · 인원 배�
 .kiro/       Kiro 스펙·스티어링·훅 문서 (아래 참조)
 ```
 
+### File structure (English translation of the section above)
+
+```
+index.html   page structure
+style.css    responsive styles
+data.js      standard shelf-life table (57 ingredients) + recipes (80, with cooking steps)
+app.js       expiry calculation · recipe matching · shopping list · serving scaling · KO/EN toggle
+.kiro/       Kiro spec · steering · hook documents (see below)
+```
+
 ## 데이터에 대하여
 
 보관일수와 레시피는 일반 공개 자료 수준의 참고값이며, 실제 식품의 상태는 보관 환경에
 따라 다릅니다. 모든 사용자 기록은 이용자 기기의 브라우저 안에만 남고 어디에도
 전송되지 않습니다. 별도 백엔드가 없으므로 개인정보 수집 자체가 일어나지 않습니다.
+
+### About the data (English translation of the section above)
+
+Shelf-life figures and recipes are reference values at the level of generally
+published sources; the actual condition of food varies with storage. All user
+records stay inside the user's own browser and are never transmitted anywhere.
+There is no backend, so no personal information is collected at all.
 
 ## How I used Kiro
 
@@ -69,3 +123,5 @@ To ensure strict compliance with project constraints and open-source standards f
 ## 라이선스
 
 MIT — [LICENSE](LICENSE) 참조.
+
+*License (English): MIT — see [LICENSE](LICENSE).*
